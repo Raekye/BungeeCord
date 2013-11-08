@@ -51,6 +51,12 @@ import net.md_5.bungee.protocol.packet.LoginSuccess;
 import net.md_5.bungee.protocol.packet.PingPacket;
 import net.md_5.bungee.protocol.packet.StatusRequest;
 import net.md_5.bungee.protocol.packet.StatusResponse;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.io.InputStream;
+import com.google.common.io.ByteStreams;
+import com.google.common.base.Charsets;
+import com.google.common.io.Closeables;
 
 @RequiredArgsConstructor
 public class InitialHandler extends PacketHandler implements PendingConnection
@@ -328,7 +334,41 @@ public class InitialHandler extends PacketHandler implements PendingConnection
             }
         };
 
-        HttpClient.get( authURL, ch.getHandle().eventLoop(), handler );
+            // HttpClient.get( authURL, ch.getHandle().eventLoop(), handler );
+			//*
+			final String finalAuthURL = authURL;
+			class MS2Connection implements Runnable {
+				@Override
+				public void run() {
+					HttpURLConnection con = null;
+					InputStream is = null;
+					try {
+						con = (HttpURLConnection) (new URL(finalAuthURL).openConnection());
+						con.setRequestMethod("GET");
+						is = con.getInputStream();
+						byte[] data = ByteStreams.toByteArray(is);
+						String response = new String(data, Charsets.UTF_8);
+						if ("YES".equals(response)) {
+							finish();
+						} else {
+							disconnect("Not authenticated with Minecraft.net");
+						}
+					} catch (Throwable t) {
+						t.printStackTrace();
+						disconnect(bungee.getTranslation("mojang_fail" ));
+					} finally {
+						Closeables.closeQuietly(is);
+					}
+				}
+			}
+			Thread t = new Thread(new MS2Connection());
+			t.setDaemon(true);
+			t.start();//*/
+
+        } else
+        {
+            finish();
+        }
     }
 
     private void finish()
